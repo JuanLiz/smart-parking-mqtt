@@ -11,30 +11,87 @@ import {
     removeMessageListener
 } from '../services/MQTTService';
 
-const ESP32_TARGET_DEVICE_ID = 'ESP32_Parking_01'; // Mover a config si es necesario
+const ESP32_TARGET_DEVICE_ID = 'ESP32_Parking_01';
 
-const MQTT_PROVIDER_LISTENER_ID = "MQTTProviderGlobalListener"; 
+const MQTT_PROVIDER_LISTENER_ID = "MQTTProviderGlobalListener";
 
 // Tipos para los mensajes y el estado
 export interface MQTTMessage {
     topic: string;
-    payload: string; // JSON string
-    parsedPayload?: any; // Opcional, si parseas aquí
+    payload: string;
+    parsedPayload?: any;
     timestamp: Date;
 }
 
+interface DialogAction {
+    label: string;
+    onPress: () => void;
+    mode?: 'text' | 'outlined' | 'contained'; // Opcional para estilo del botón
+}
+
+// Para el dialog emergente de la app
+interface AppDialogState {
+    visible: boolean;
+    title: string;
+    content: string | React.ReactNode;
+    actions?: DialogAction[];
+    dismissable?: boolean;
+}
+
+// Tipos para el estado del Snackbar
+interface AppSnackbarState {
+    visible: boolean;
+    message: string;
+    action?: {
+        label: string;
+        onPress: () => void;
+    };
+    duration?: number;
+}
+
 interface MQTTContextState {
+    // Estado de conexión y mensajes
     isConnected: boolean;
-    lastMessage: MQTTMessage | null; // Podrías tener un array de mensajes si necesitas historial
+    lastMessage: MQTTMessage | null;
     parkingStatus: { online: boolean; occupancy: number; totalSpaces: number };
-    pairingInfo: { sessionId?: string; status?: 'ready' | 'success' | 'failure'; message?: string; data?: any };
+    pairingInfo: {
+        sessionId?: string;
+        status?: 'ready' | 'success' | 'failure';
+        message?: string;
+        data?: any
+    };
+
+    // Para el estado del diálogo
+    dialogState: AppDialogState;
+    showAppDialog: (title: string, content: string | React.ReactNode, actions?: DialogAction[], dismissable?: boolean) => void; // NUEVO
+    hideAppDialog: () => void;
+
+    // Para el snackbar
+    snackbarState: AppSnackbarState;
+    showAppSnackbar: (message: string, action?: AppSnackbarState['action'], duration?: number) => void; // NUEVO
+    hideAppSnackbar: () => void;
+
+    // Funciones de conexión y publicación
     connectMQTT: () => void;
     disconnectMQTT: () => void;
-    publishMQTT: (subTopic: string, message: object | string, options?: object) => void; // Ajusta el tipo de 'message'
+    publishMQTT: (subTopic: string, message: object | string, options?: object) => void;
     // Funciones específicas de la app que interactúan con MQTT
     initiatePairing: (sessionId: string) => Promise<void>;
     respondTo2FA: (ibuttonId: string, associatedId: number | string, allow: boolean) => Promise<void>;
 }
+
+const initialDialogState: AppDialogState = {
+    visible: false,
+    title: '',
+    content: '',
+    actions: [],
+    dismissable: true,
+};
+
+const initialSnackbarState: AppSnackbarState = {
+    visible: false,
+    message: '',
+};
 
 const defaultParkingStatus = { online: false, occupancy: 0, totalSpaces: 0 };
 const defaultPairingInfo = {};
@@ -49,7 +106,11 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [lastMessage, setLastMessage] = useState<MQTTMessage | null>(null);
     const [parkingStatus, setParkingStatus] = useState(defaultParkingStatus);
-    const [pairingInfo, setPairingInfo] = useState<any>(defaultPairingInfo); // 'any' por ahora, definir tipo más específico
+    const [pairingInfo, setPairingInfo] = useState<any>(defaultPairingInfo);
+
+    // Para los dialogos y snackbars
+    const [dialogState, setDialogState] = useState<AppDialogState>(initialDialogState);
+    const [snackbarState, setSnackbarState] = useState<AppSnackbarState>(initialSnackbarState);
 
     const handleMQTTConnect = useCallback(() => {
         console.log("MQTTContext: Connected!");
@@ -62,26 +123,61 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
         setParkingStatus(prev => ({ ...prev, online: false })); // Marcar parking offline
     }, []);
 
-    // Función para manejar la respuesta de 2FA (ahora parte del contexto)
-    const respondTo2FA = useCallback(async (ibuttonId: string, associatedId: number | string, allow: boolean): Promise<void> => {
-        const authSuccess: boolean = await authenticateWithBiometrics(`Confirmar ${allow ? 'entrada' : 'denegación'} para iButton ${associatedId}`);
+    // Gestionar diálogo de la app
+    const showAppDialog = useCallback((
+        title: string,
+        content: string | React.ReactNode,
+        actions?: DialogAction[],
+        dismissable: boolean = true
+    ) => {
+        setDialogState({ visible: true, title, content, actions: actions || [], dismissable });
+    }, []);
+
+    const hideAppDialog = useCallback(() => {
+        setDialogState(prev => ({ ...prev, visible: false }));
+        // Opcional: resetear completamente el estado del diálogo al ocultarlo
+        // setTimeout(() => setDialogState(initialDialogState), 300); // Delay para animación
+    }, []);
+
+    // Gestionar snackbar
+    const showAppSnackbar = useCallback((
+        message: string,
+        action?: AppSnackbarState['action'],
+        duration?: number
+    ) => {
+        setSnackbarState({ visible: true, message, action, duration });
+    }, []);
+
+    const hideAppSnackbar = useCallback(() => {
+        setSnackbarState(prev => ({ ...prev, visible: false }));
+    }, []);
+
+
+    // Función para manejar la respuesta de 2FA
+    const respondTo2FA = useCallback(async (
+        ibuttonId: string,
+        associatedId: number | string,
+        allow: boolean
+    ): Promise<void> => {
+        hideAppDialog(); // Ocultar el diálogo 2FA antes de la biometría
+        const authSuccess: boolean = await authenticateWithBiometrics(
+            `Confirmar ${allow ? 'entrada' : 'denegación'} para iButton ${associatedId}`
+        );
         if (authSuccess) {
             publishServiceMQTT(`cmd/auth/2fa_response`, {
                 ibutton_id: ibuttonId,
                 allow_entry: allow,
                 device_id: ESP32_TARGET_DEVICE_ID,
             });
-            Alert.alert("2FA Respuesta Enviada", `Respuesta de ${allow ? 'permiso' : 'denegación'} enviada para iButton ${associatedId}.`);
+            // Mostrar confirmación con snackbar
+            showAppSnackbar(`Respuesta de ${allow ? 'permiso' : 'denegación'} enviada para iButton ${associatedId}.`);
         } else {
-            Alert.alert("Autenticación Fallida", "No se pudo enviar la respuesta 2FA.");
+            showAppSnackbar("Autenticación biométrica fallida. No se envió respuesta 2FA.");
         }
-    }, []);
+    }, [hideAppDialog, showAppSnackbar]);
 
     useEffect(() => {
-        console.log("MQTTProvider: useEffect RUNNING. Setting up MQTT connection and message handler...");
-
         const providerMessageHandler = (topic: string, messageString: string) => {
-            console.log(`MQTTProvider: Listener (${MQTT_PROVIDER_LISTENER_ID}) received: [${topic}]: ${messageString}`);
             const newMessage: MQTTMessage = {
                 topic,
                 payload: messageString,
@@ -104,19 +200,32 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
             } else if (topic.includes('/pairing/')) {
                 if (newMessage.parsedPayload?.pairing_session_id) {
                     if (topic.endsWith('/pairing/ready_for_ibutton')) {
-                        setPairingInfo({ sessionId: newMessage.parsedPayload.pairing_session_id, status: 'ready', message: 'Acerque el iButton...' });
+                        setPairingInfo({
+                            sessionId: newMessage.parsedPayload.pairing_session_id,
+                            status: 'ready',
+                            message: 'Acerque el iButton...'
+                        });
                     } else if (topic.endsWith('/pairing/success')) {
-                        setPairingInfo({ sessionId: newMessage.parsedPayload.pairing_session_id, status: 'success', message: '¡Emparejamiento exitoso!', data: newMessage.parsedPayload });
+                        setPairingInfo({
+                            sessionId: newMessage.parsedPayload.pairing_session_id,
+                            status: 'success',
+                            message: '¡Emparejamiento exitoso!',
+                            data: newMessage.parsedPayload
+                        });
                     } else if (topic.endsWith('/pairing/failure')) {
-                        setPairingInfo({ sessionId: newMessage.parsedPayload.pairing_session_id, status: 'failure', message: `Fallo: ${newMessage.parsedPayload.reason}`, data: newMessage.parsedPayload });
+                        setPairingInfo({
+                            sessionId: newMessage.parsedPayload.pairing_session_id,
+                            status: 'failure',
+                            message: `Fallo: ${newMessage.parsedPayload.reason}`,
+                            data: newMessage.parsedPayload
+                        });
                     }
                 }
             }
-            // NO manejamos auth/2fa_request aquí para la alerta, AppLogicSetup lo hará
         };
 
         console.log("MQTTProvider: Adding its message listener to MQTTService.");
-        addMessageListener(MQTT_PROVIDER_LISTENER_ID, providerMessageHandler); // <--- AÑADIR LISTENER
+        addMessageListener(MQTT_PROVIDER_LISTENER_ID, providerMessageHandler);
 
         console.log("MQTTProvider: Calling connectServiceMQTT.");
         connectServiceMQTT(handleMQTTConnect, handleMQTTDisconnect);
@@ -140,17 +249,23 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
     }, []);
 
     const publishMQTT = useCallback((subTopic: string, message: object | string, options?: object) => {
-        publishServiceMQTT(subTopic, message, options as any); // 'as any' para simplificar tipo de options
+        publishServiceMQTT(subTopic, message, options as any);
     }, []);
 
     const initiatePairing = useCallback(async (sessionId: string): Promise<void> => {
         const authSuccess: boolean = await authenticateWithBiometrics('Autenticar para iniciar emparejamiento');
         if (authSuccess) {
-            setPairingInfo({ sessionId, status: 'initiating', message: 'Enviando solicitud de emparejamiento...' });
-            publishServiceMQTT('cmd/initiate_pairing', { pairing_session_id: sessionId });
-            // El estado de pairingInfo se actualizará cuando llegue la respuesta del ESP32
+            setPairingInfo({
+                sessionId,
+                status: 'initiating',
+                message: 'Enviando solicitud de emparejamiento...'
+            });
+            publishServiceMQTT(
+                'cmd/initiate_pairing',
+                { pairing_session_id: sessionId }
+            );
         } else {
-            Alert.alert("Autenticación Fallida", "No se pudo iniciar el emparejamiento.");
+            Alert.alert("Autenticación fallida", "No se pudo iniciar el emparejamiento.");
         }
     }, []);
 
@@ -165,6 +280,14 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
         publishMQTT,
         initiatePairing,
         respondTo2FA,
+        dialogState,
+        // Dialogo de la app
+        showAppDialog,
+        hideAppDialog,
+        // Snackbar de la app
+        snackbarState,
+        showAppSnackbar,
+        hideAppSnackbar,
     };
 
     return (

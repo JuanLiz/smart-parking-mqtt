@@ -25,10 +25,10 @@ export default function HomeScreen() {
     const theme = useTheme();
     const router = useRouter();
     const {
-        isConnected: mqttConnected, // Obtener del contexto
+        isConnected: mqttConnected,
         parkingStatus,
         pairingInfo,
-        initiatePairing, // Usar la función del contexto
+        initiatePairing,
         lastMessage // Para el log de debug
     } = useMQTT();
 
@@ -70,17 +70,26 @@ export default function HomeScreen() {
                 <Card.Content>
                     <View style={styles.statusRow}>
                         <Text style={styles.statusLabel}>Conexión MQTT:</Text>
-                        <Text style={[styles.statusValue, { color: mqttConnected ? theme.colors.primary : theme.colors.error }]}>
+                        <Text
+                            style={[
+                                styles.statusValue,
+                                { color: mqttConnected ? theme.colors.primary : theme.colors.error }
+                            ]}
+                        >
                             {mqttConnected ? "Conectado" : "Desconectado"}
                         </Text>
                     </View>
                     <View style={styles.statusRow}>
                         <Text style={styles.statusLabel}>Estado Parking:</Text>
-                        <Text style={styles.statusValue}>{parkingStatus.online ? 'Online' : 'Offline'}</Text>
+                        <Text style={styles.statusValue}>
+                            {parkingStatus.online ? 'Online' : 'Offline'}
+                        </Text>
                     </View>
                     <View style={styles.statusRow}>
                         <Text style={styles.statusLabel}>Ocupación:</Text>
-                        <Text style={styles.statusValue}>{parkingStatus.occupancy} / {parkingStatus.totalSpaces}</Text>
+                        <Text style={styles.statusValue}>
+                            {parkingStatus.occupancy} / {parkingStatus.totalSpaces}
+                        </Text>
                     </View>
                 </Card.Content>
             </Card>
@@ -94,14 +103,28 @@ export default function HomeScreen() {
             >
                 Emparejar Nuevo iButton
             </Button>
-            {pairingStatusMessage ? <Text style={styles.pairingStatusText}>{pairingStatusMessage}</Text> : null}
+            {pairingStatusMessage ? (
+                <Text style={styles.pairingStatusText}>
+                    {pairingStatusMessage}
+                </Text>
+            ) : null}
 
             <Card style={styles.card}>
                 <Card.Title title="Log MQTT (Global)" />
                 <Card.Content>
-                    {lastMessagesLog.length === 0 && <Text style={styles.logMessage}>Esperando mensajes...</Text>}
+                    {lastMessagesLog.length === 0 && (
+                        <Text style={styles.logMessage}>
+                            Esperando mensajes...
+                        </Text>
+                    )}
                     {lastMessagesLog.map((msg, index) => (
-                        <Text key={index} style={styles.logMessage} numberOfLines={1}>{msg}</Text>
+                        <Text
+                            key={index}
+                            style={styles.logMessage}
+                            numberOfLines={1}
+                        >
+                            {msg}
+                        </Text>
                     ))}
                 </Card.Content>
             </Card>

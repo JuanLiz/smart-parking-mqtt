@@ -15,15 +15,13 @@ Notifications.setNotificationHandler({
     }),
 });
 
-// Define un tipo para los datos de notificación si es consistente
 interface NotificationData {
     type: string;
     ibuttonId: string;
-    associatedId: number | string; // Puede ser número o string dependiendo de lo que envíe el ESP32
-    [key: string]: any; // Para otras propiedades
+    associatedId: number | string;
+    [key: string]: any;
 }
 
-// Si necesitas un tipo personalizado para acceder a los datos, usa un tipo auxiliar en vez de extender Notification
 type CustomNotification = {
     request: {
         content: Notifications.NotificationContent & { data: NotificationData };
