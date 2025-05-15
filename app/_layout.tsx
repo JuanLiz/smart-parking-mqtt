@@ -10,7 +10,7 @@ import { Alert, Appearance } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { adaptNavigationTheme, Appbar, Button, Dialog, MD3DarkTheme, MD3LightTheme, Menu, Provider as PaperProvider, Portal, Snackbar, Text } from 'react-native-paper';
 import { MQTTProvider, useMQTT } from '../contexts/MQTTContext';
-import { addConfiguredNotificationResponseListener, registerForPushNotificationsAsync } from '../services/NotificationService';
+import { addLocalNotificationResponseListener, scheduleLocal2FANotification } from '../services/NotificationService';
 
 
 function AppBarMenuContent() {
@@ -47,38 +47,48 @@ function AppBarMenuContent() {
 function AppLogicSetup() {
   const { respondTo2FA, lastMessage, showAppDialog, hideAppDialog } = useMQTT();
 
+  // Listener para cuando se TOCA una notificación local de 2FA
   useEffect(() => {
-    registerForPushNotificationsAsync().then(token => {
-      if (token) console.log("AppLogicSetup: Push token obtained:", token);
-    });
+    const handleNotificationTap = async (data: /*LocalNotificationData*/ any) => {
+      console.log("AppLogicSetup: Local 2FA Notification tapped. Data:", data);
+      // Ahora que el usuario tocó la notificación, mostramos el DIÁLOGO de Paper
+      // para que elija Permitir/Denegar.
+      if (data.ibuttonId && data.associatedId !== undefined) {
+        showAppDialog(
+          "Confirmar Entrada 2FA",
+          <Text variant="bodyMedium">{`¿Permitir entrada para iButton asociado: ${data.associatedId}?`}</Text>,
+          [
+            { label: "Denegar", onPress: () => respondTo2FA(data.ibuttonId, data.associatedId, false), mode: 'outlined' },
+            { label: "Permitir", onPress: () => respondTo2FA(data.ibuttonId, data.associatedId, true), mode: 'contained' },
+          ],
+          false // No dismissable
+        );
+      }
+    };
 
-    const notificationSubscription = addConfiguredNotificationResponseListener(respondTo2FA);
+    // Ya no necesitamos el token de push para este flujo
+    // registerForPushNotificationsAsync().then(token => {
+    //   if (token) console.log("AppLogicSetup: Push token obtained:", token);
+    // });
+
+    const notificationSubscription = addLocalNotificationResponseListener(handleNotificationTap);
 
     return () => {
       if (notificationSubscription) notificationSubscription.remove();
     };
-  }, [respondTo2FA]);
+  }, [respondTo2FA, showAppDialog]); // respondTo2FA y showAppDialog son estables por useCallback
 
-
-  // Reaccionar a mensajes para alertas globales (como 2FA)
+  // Reaccionar a mensajes MQTT para *disparar* la notificación local
   useEffect(() => {
     if (lastMessage && lastMessage.topic.endsWith('auth/2fa_request') && lastMessage.parsedPayload) {
       const { ibutton_id, associated_id, device_id } = lastMessage.parsedPayload;
       if (ibutton_id && associated_id !== undefined) {
-        showAppDialog(
-          "Solicitud de Entrada 2FA",
-          <Text variant="bodyMedium">
-            {`Parking ${device_id || 'desconocido'} solicita confirmación para iButton asociado: ${associated_id}`}
-          </Text>,
-          [
-            { label: "Denegar", onPress: () => respondTo2FA(ibutton_id, associated_id, false), mode: 'outlined' },
-            { label: "Permitir", onPress: () => respondTo2FA(ibutton_id, associated_id, true), mode: 'contained' },
-          ],
-          false // No permitir que se cierre tocando fuera o con botón atrás
-        );
+        console.log("AppLogicSetup: Detected 2FA request from MQTT. Scheduling local notification.");
+        scheduleLocal2FANotification(ibutton_id, associated_id); // Disparar notificación local
+        // Ya NO mostramos Alert.alert() aquí directamente.
       }
     }
-  }, [lastMessage, respondTo2FA, showAppDialog, hideAppDialog]);
+  }, [lastMessage]); // Solo depende de lastMessage
 
   return null;
 }
