@@ -316,7 +316,7 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
 
     const cancelDeleteIButtonMode = useCallback((): void => { // Opcional
         // Si el ESP32 tuviera un comando para cancelar el modo de borrado
-        // publishServiceMQTT('cmd/ibutton/cancel_delete_mode', {});
+        publishServiceMQTT('cmd/ibutton/cancel_delete_mode', {});
         // Por ahora, la app simplemente resetea su estado local. El ESP32 tendrá timeout.
         setDeleteIButtonState(initialDeleteIButtonState);
         showAppSnackbar("Modo borrado cancelado en la app.");

@@ -14,25 +14,30 @@ export default function DeleteIButtonProcessScreen() {
   // intentar activarlo o mostrar un error.
   useEffect(() => {
     if (!deleteIButtonState.isActive && !deleteIButtonState.statusMessage) { // Solo si no hay un mensaje de estado previo
-        console.log("DeleteScreen: delete mode not active on mount, attempting to initiate.");
-        // No llamar a initiateDeleteIButtonMode() automáticamente aquí sin interacción del usuario,
-        // ya que implica biometría. El usuario ya lo hizo desde el menú.
-        // Si se llega aquí y no está activo, es un estado anómalo o el usuario navegó hacia atrás y adelante.
-        // Por ahora, si no está activo, mostrar un mensaje y permitir reintentar o volver.
-        if (!deleteIButtonState.isLoading && !deleteIButtonState.statusMessage) { // Evitar bucle si ya se está cargando
-            // router.replace('/'); // O volver a la pantalla anterior
-            // O mostrar un botón para reintentar la activación
-        }
+      console.log("DeleteScreen: delete mode not active on mount, attempting to initiate.");
+      // No llamar a initiateDeleteIButtonMode() automáticamente aquí sin interacción del usuario,
+      // ya que implica biometría. El usuario ya lo hizo desde el menú.
+      // Si se llega aquí y no está activo, es un estado anómalo o el usuario navegó hacia atrás y adelante.
+      // Por ahora, si no está activo, mostrar un mensaje y permitir reintentar o volver.
+      if (!deleteIButtonState.isLoading && !deleteIButtonState.statusMessage) { // Evitar bucle si ya se está cargando
+        // router.replace('/'); // O volver a la pantalla anterior
+        // O mostrar un botón para reintentar la activación
+      }
     }
   }, [deleteIButtonState.isActive, deleteIButtonState.isLoading, deleteIButtonState.statusMessage, initiateDeleteIButtonMode]);
 
 
   const handleGoBack = () => {
-    if (deleteIButtonState.isActive && deleteIButtonState.isLoading) {
-        cancelDeleteIButtonMode(); // Llama a la función del contexto para cancelar en la app
-    }
+    console.log("DeleteScreen: Canceling delete mode and going back.");
+    cancelDeleteIButtonMode();
     router.back();
   };
+
+  useEffect(() => {
+    return () => {
+      cancelDeleteIButtonMode();
+    }
+  }, [cancelDeleteIButtonMode]);
 
 
   let content;
@@ -46,9 +51,9 @@ export default function DeleteIButtonProcessScreen() {
       <Text style={styles.statusText}>{deleteIButtonState.statusMessage || "Activando modo..."}</Text>
       {content}
       {(!deleteIButtonState.isLoading || deleteIButtonState.error || deleteIButtonState.successData) && (
-         <Button mode="outlined" onPress={handleGoBack} style={styles.button}>
-            {deleteIButtonState.error || deleteIButtonState.successData ? "Finalizar" : "Cancelar y Volver"}
-          </Button>
+        <Button mode="outlined" onPress={handleGoBack} style={styles.button}>
+          {deleteIButtonState.error || deleteIButtonState.successData ? "Finalizar" : "Cancelar y Volver"}
+        </Button>
       )}
     </View>
   );
