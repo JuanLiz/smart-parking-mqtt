@@ -46,9 +46,11 @@ function AppBarMenuContent() {
 
   const handleDeleteIButtonPress = async () => {
     closeMenu();
-    await initiateDeleteIButtonMode();
-    router.push('/deleteIButtonProcess');
-  };
+    const canProceed = await initiateDeleteIButtonMode();
+    if (canProceed) {
+      router.push('/deleteIButtonProcess');
+    };
+  }
 
   return (
     <Menu
@@ -89,11 +91,6 @@ function AppLogicSetup() {
       }
     };
 
-    // Ya no necesitamos el token de push para este flujo
-    // registerForPushNotificationsAsync().then(token => {
-    //   if (token) console.log("AppLogicSetup: Push token obtained:", token);
-    // });
-
     const notificationSubscription = addLocalNotificationResponseListener(handleNotificationTap);
 
     return () => {
@@ -108,7 +105,6 @@ function AppLogicSetup() {
       if (ibutton_id && associated_id !== undefined) {
         console.log("AppLogicSetup: Detected 2FA request from MQTT. Scheduling local notification.");
         scheduleLocal2FANotification(ibutton_id, associated_id); // Disparar notificación local
-        // Ya NO mostramos Alert.alert() aquí directamente.
       }
     }
   }, [lastMessage]); // Solo depende de lastMessage

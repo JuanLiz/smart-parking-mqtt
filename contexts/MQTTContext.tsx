@@ -1,6 +1,5 @@
 // contexts/MQTTContext.tsx
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 import { authenticateWithBiometrics } from '../services/BiometricAuth';
 import {
     addMessageListener,
@@ -73,7 +72,7 @@ interface MQTTContextState {
 
     // Para borrar iButtons
     deleteIButtonState: AppDeleteIButtonState;
-    initiateDeleteIButtonMode: () => Promise<void>;
+    initiateDeleteIButtonMode: () => Promise<boolean>;
     cancelDeleteIButtonMode: () => void;
 
     // Funciones de conexión y publicación
@@ -81,7 +80,7 @@ interface MQTTContextState {
     disconnectMQTT: () => void;
     publishMQTT: (subTopic: string, message: object | string, options?: object) => void;
     // Funciones específicas de la app que interactúan con MQTT
-    initiatePairing: (sessionId: string) => Promise<void>;
+    initiatePairing: (sessionId: string) => Promise<boolean>;
     respondTo2FA: (ibuttonId: string, associatedId: number | string, allow: boolean) => Promise<void>;
 }
 
@@ -283,7 +282,7 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
         publishServiceMQTT(subTopic, message, options as any);
     }, []);
 
-    const initiatePairing = useCallback(async (sessionId: string): Promise<void> => {
+    const initiatePairing = useCallback(async (sessionId: string): Promise<boolean> => {
         const authSuccess: boolean = await authenticateWithBiometrics('Autenticar para iniciar emparejamiento');
         if (authSuccess) {
             setPairingInfo({
@@ -295,18 +294,23 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
                 'cmd/initiate_pairing',
                 { pairing_session_id: sessionId }
             );
+            return true;
         } else {
-            Alert.alert("Autenticación fallida", "No se pudo iniciar el emparejamiento.");
+            showAppSnackbar("Autenticación fallida. Emparejamiento no iniciado.");
+            return false;
         }
-    }, []);
+    }, [showAppSnackbar]);
 
-    const initiateDeleteIButtonMode = useCallback(async (): Promise<void> => {
+    const initiateDeleteIButtonMode = useCallback(async (): Promise<boolean> => {
         const authSuccess: boolean = await authenticateWithBiometrics('Autenticar para activar modo borrado');
         if (authSuccess) {
             setDeleteIButtonState({ isActive: true, isLoading: true, statusMessage: "Activando modo borrado en el parking..." });
             publishServiceMQTT('cmd/ibutton/initiate_delete_mode', {}); // Payload vacío es suficiente
+            return true;
         } else {
             showAppSnackbar("Autenticación fallida. Modo borrado no activado.");
+            setDeleteIButtonState({ isActive: false, isLoading: false, statusMessage: "Modo borrado cancelado por autenticación fallida." });
+            return false;
         }
     }, [showAppSnackbar]);
 

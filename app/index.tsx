@@ -10,16 +10,6 @@ interface OccupancyState {
     total: number;
 }
 
-interface ParsedMQTTMessageHomeScreen {
-    online?: boolean;
-    occupancy?: number;
-    total_spaces?: number;
-    ibutton_id?: string;
-    associated_id?: number | string;
-    pairing_session_id?: string;
-    reason?: string;
-}
-
 
 export default function HomeScreen() {
     const theme = useTheme();
@@ -32,20 +22,7 @@ export default function HomeScreen() {
         lastMessage // Para el log de debug
     } = useMQTT();
 
-    const [pairingStatusMessage, setPairingStatusMessage] = useState<string>('');
     const [lastMessagesLog, setLastMessagesLog] = useState<string[]>([]);
-
-
-    // Reaccionar a cambios en pairingInfo del contexto
-    useEffect(() => {
-        if (pairingInfo?.status === 'success' && pairingInfo.data) {
-            setPairingStatusMessage(`iButton ${pairingInfo.data.ibutton_id} emparejado con ID ${pairingInfo.data.associated_id}!`);
-            setTimeout(() => setPairingStatusMessage(''), 7000);
-        } else if (pairingInfo?.status === 'failure') {
-            setPairingStatusMessage(`Fallo en emparejamiento: ${pairingInfo.message}`);
-            setTimeout(() => setPairingStatusMessage(''), 7000);
-        }
-    }, [pairingInfo]);
 
     // Actualizar log de mensajes
     useEffect(() => {
@@ -57,10 +34,10 @@ export default function HomeScreen() {
 
     const handleInitiatePairingPress = async (): Promise<void> => {
         const sessionId: string = `rn_pair_${Date.now()}`;
-        await initiatePairing(sessionId); // Llama a la función del contexto
-        // initiatePairing ya maneja la biometría y la publicación MQTT.
-        // El cambio de estado en pairingInfo (del contexto) debería ser detectado por PairingScreen.
-        router.push({ pathname: '/pairing', params: { sessionId } });
+        const canProceed = await initiatePairing(sessionId);
+        if (canProceed) {
+            router.push({ pathname: '/pairing', params: { sessionId } });
+        }
     };
 
     return (
@@ -103,11 +80,6 @@ export default function HomeScreen() {
             >
                 Emparejar Nuevo iButton
             </Button>
-            {pairingStatusMessage ? (
-                <Text style={styles.pairingStatusText}>
-                    {pairingStatusMessage}
-                </Text>
-            ) : null}
 
             <Card style={styles.card}>
                 <Card.Title title="Log MQTT (Global)" />
