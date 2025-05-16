@@ -46,14 +46,8 @@ function AppBarMenuContent() {
 
   const handleDeleteIButtonPress = async () => {
     closeMenu();
-    // Podríamos navegar a una pantalla específica para el borrado que muestre el estado.
-    // Por ahora, la lógica de estado está en el contexto, y HomeScreen podría mostrarlo.
-    // O crear una pantalla DeleteIButtonScreen que observe deleteIButtonState.
-    // Simplemente llamamos a la función del contexto.
     await initiateDeleteIButtonMode();
-    // La UI debería actualizarse basada en deleteIButtonState (ej. en HomeScreen o una nueva pantalla)
-    // Podríamos navegar a una pantalla que diga "Acerque iButton a borrar"
-    router.push('/deleteIButtonProcess'); // Nueva pantalla hipotética
+    router.push('/deleteIButtonProcess');
   };
 
   return (
