@@ -63,13 +63,18 @@ interface MQTTContextState {
 
     // Para el estado del diálogo
     dialogState: AppDialogState;
-    showAppDialog: (title: string, content: string | React.ReactNode, actions?: DialogAction[], dismissable?: boolean) => void; // NUEVO
+    showAppDialog: (title: string, content: string | React.ReactNode, actions?: DialogAction[], dismissable?: boolean) => void;
     hideAppDialog: () => void;
 
     // Para el snackbar
     snackbarState: AppSnackbarState;
-    showAppSnackbar: (message: string, action?: AppSnackbarState['action'], duration?: number) => void; // NUEVO
+    showAppSnackbar: (message: string, action?: AppSnackbarState['action'], duration?: number) => void;
     hideAppSnackbar: () => void;
+
+    // Para borrar iButtons
+    deleteIButtonState: AppDeleteIButtonState;
+    initiateDeleteIButtonMode: () => Promise<void>;
+    cancelDeleteIButtonMode: () => void;
 
     // Funciones de conexión y publicación
     connectMQTT: () => void;
@@ -79,6 +84,18 @@ interface MQTTContextState {
     initiatePairing: (sessionId: string) => Promise<void>;
     respondTo2FA: (ibuttonId: string, associatedId: number | string, allow: boolean) => Promise<void>;
 }
+
+interface AppDeleteIButtonState {
+    isActive: boolean; // Si el modo de borrado MQTT está activo en el ESP32
+    statusMessage?: string; // Ej. "Acerque iButton a borrar", "Borrado exitoso", "Fallo"
+    isLoading?: boolean; // Para mostrar un spinner mientras se espera el iButton
+    error?: string;
+    successData?: any; // Datos del iButton borrado
+}
+
+const initialDeleteIButtonState: AppDeleteIButtonState = {
+    isActive: false,
+};
 
 const initialDialogState: AppDialogState = {
     visible: false,
@@ -111,6 +128,9 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
     // Para los dialogos y snackbars
     const [dialogState, setDialogState] = useState<AppDialogState>(initialDialogState);
     const [snackbarState, setSnackbarState] = useState<AppSnackbarState>(initialSnackbarState);
+
+    // Estado para el modo de borrado de iButtons
+    const [deleteIButtonState, setDeleteIButtonState] = useState<AppDeleteIButtonState>(initialDeleteIButtonState);
 
     const handleMQTTConnect = useCallback(() => {
         console.log("MQTTContext: Connected!");
@@ -222,6 +242,17 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
                     }
                 }
             }
+
+            // Manejar el estado de borrado de iButtons
+            if (topic.endsWith('/ibutton/delete_ready') && newMessage.parsedPayload) {
+                setDeleteIButtonState({ isActive: true, isLoading: true, statusMessage: "Listo. Acerque el iButton a borrar..." });
+            } else if (topic.endsWith('/ibutton/delete_success') && newMessage.parsedPayload) {
+                setDeleteIButtonState({ isActive: false, isLoading: false, statusMessage: `iButton ${newMessage.parsedPayload.ibutton_id} borrado exitosamente.`, successData: newMessage.parsedPayload });
+                showAppSnackbar(`iButton ${newMessage.parsedPayload.ibutton_id} borrado.`);
+            } else if (topic.endsWith('/ibutton/delete_failure') && newMessage.parsedPayload) {
+                setDeleteIButtonState({ isActive: false, isLoading: false, statusMessage: `Fallo al borrar: ${newMessage.parsedPayload.reason}`, error: newMessage.parsedPayload.reason });
+                showAppSnackbar(`Error al borrar iButton: ${newMessage.parsedPayload.reason}`, undefined, 5000);
+            }
         };
 
         console.log("MQTTProvider: Adding its message listener to MQTTService.");
@@ -235,7 +266,7 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
             removeMessageListener(MQTT_PROVIDER_LISTENER_ID);
             disconnectServiceMQTT();
         };
-    }, [handleMQTTConnect, handleMQTTDisconnect]);
+    }, [handleMQTTConnect, handleMQTTDisconnect, showAppSnackbar]);
 
 
     const connectMQTT = useCallback(() => {
@@ -269,6 +300,25 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
         }
     }, []);
 
+    const initiateDeleteIButtonMode = useCallback(async (): Promise<void> => {
+        const authSuccess: boolean = await authenticateWithBiometrics('Autenticar para activar modo borrado');
+        if (authSuccess) {
+            setDeleteIButtonState({ isActive: true, isLoading: true, statusMessage: "Activando modo borrado en el parking..." });
+            publishServiceMQTT('cmd/ibutton/initiate_delete_mode', {}); // Payload vacío es suficiente
+        } else {
+            showAppSnackbar("Autenticación fallida. Modo borrado no activado.");
+        }
+    }, [showAppSnackbar]);
+
+    const cancelDeleteIButtonMode = useCallback((): void => { // Opcional
+        // Si el ESP32 tuviera un comando para cancelar el modo de borrado
+        // publishServiceMQTT('cmd/ibutton/cancel_delete_mode', {});
+        // Por ahora, la app simplemente resetea su estado local. El ESP32 tendrá timeout.
+        setDeleteIButtonState(initialDeleteIButtonState);
+        showAppSnackbar("Modo borrado cancelado en la app.");
+    }, [showAppSnackbar]);
+
+
 
     const contextValue: MQTTContextState = {
         isConnected,
@@ -288,6 +338,10 @@ export const MQTTProvider: React.FC<MQTTProviderProps> = ({ children }) => {
         snackbarState,
         showAppSnackbar,
         hideAppSnackbar,
+        // Borrado
+        deleteIButtonState,
+        initiateDeleteIButtonMode,
+        cancelDeleteIButtonMode,
     };
 
     return (

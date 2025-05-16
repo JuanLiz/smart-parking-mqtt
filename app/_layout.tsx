@@ -6,16 +6,30 @@ import {
 } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Alert, Appearance } from 'react-native';
+import { Appearance } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { adaptNavigationTheme, Appbar, Button, Dialog, MD3DarkTheme, MD3LightTheme, Menu, Provider as PaperProvider, Portal, Snackbar, Text } from 'react-native-paper';
+import {
+  adaptNavigationTheme,
+  Appbar,
+  Button, Dialog,
+  MD3DarkTheme,
+  MD3LightTheme,
+  Menu,
+  Provider as PaperProvider,
+  Portal,
+  Snackbar,
+  Text
+} from 'react-native-paper';
 import { MQTTProvider, useMQTT } from '../contexts/MQTTContext';
-import { addLocalNotificationResponseListener, scheduleLocal2FANotification } from '../services/NotificationService';
+import {
+  addLocalNotificationResponseListener,
+  scheduleLocal2FANotification
+} from '../services/NotificationService';
 
 
 function AppBarMenuContent() {
   const [appBarMenuVisible, setAppBarMenuVisible] = React.useState<boolean>(false);
-  const { isConnected, connectMQTT, disconnectMQTT } = useMQTT(); // Usar el contexto
+  const { isConnected, connectMQTT, disconnectMQTT, initiateDeleteIButtonMode, deleteIButtonState } = useMQTT();
   const router = useRouter();
 
   const openMenu = () => setAppBarMenuVisible(true);
@@ -30,14 +44,29 @@ function AppBarMenuContent() {
     closeMenu();
   };
 
+  const handleDeleteIButtonPress = async () => {
+    closeMenu();
+    // Podríamos navegar a una pantalla específica para el borrado que muestre el estado.
+    // Por ahora, la lógica de estado está en el contexto, y HomeScreen podría mostrarlo.
+    // O crear una pantalla DeleteIButtonScreen que observe deleteIButtonState.
+    // Simplemente llamamos a la función del contexto.
+    await initiateDeleteIButtonMode();
+    // La UI debería actualizarse basada en deleteIButtonState (ej. en HomeScreen o una nueva pantalla)
+    // Podríamos navegar a una pantalla que diga "Acerque iButton a borrar"
+    router.push('/deleteIButtonProcess'); // Nueva pantalla hipotética
+  };
+
   return (
     <Menu
       visible={appBarMenuVisible}
       onDismiss={closeMenu}
       anchor={<Appbar.Action icon="dots-vertical" onPress={openMenu} />}
     >
-      <Menu.Item onPress={() => { Alert.alert("Settings", "TODO: Settings Screen"); closeMenu(); }}
-        title="Configuración" />
+      <Menu.Item
+        onPress={handleDeleteIButtonPress}
+        title="Borrar iButton"
+        disabled={!isConnected}
+      />
       <Menu.Item onPress={handleToggleMQTT} title={isConnected ? "Desconectar MQTT" : "Conectar MQTT"} />
     </Menu>
   );
@@ -203,8 +232,9 @@ export default function RootLayout() {
                 ),
               }}
             >
-              <Stack.Screen name="index" options={{ title: 'Smart Parking Home' }} />
+              <Stack.Screen name="index" options={{ title: 'Smart Parking' }} />
               <Stack.Screen name="pairing" options={{ title: 'Emparejar iButton' }} />
+              <Stack.Screen name="deleteIButtonProcess" options={{ title: 'Borrar iButton' }} />
             </Stack>
             <GlobalAppDialog />
             <GlobalAppSnackbar />
@@ -213,4 +243,8 @@ export default function RootLayout() {
       </PaperProvider>
     </GestureHandlerRootView>
   );
+}
+
+function initiateDeleteIButtonMode() {
+  throw new Error('Function not implemented.');
 }

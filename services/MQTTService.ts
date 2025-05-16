@@ -129,6 +129,7 @@ const subscribeToTopics = (): void => {
       `${BASE_TOPIC_PREFIX}status`,
       `${BASE_TOPIC_PREFIX}pairing/#`,
       `${BASE_TOPIC_PREFIX}auth/2fa_request`,
+      `${BASE_TOPIC_PREFIX}ibutton/#`,
     ];
 
     topicsToSubscribe.forEach(topic => {
