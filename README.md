@@ -51,11 +51,11 @@ A React Native - Expo mobile application that interfaces with the [Smart Parking
 
 * **Home Screen:** Displays connection status and parking occupancy. Options to initiate iButton pairing or deletion.
 * **Authentication Flow:** When an iButton is scanned at the parking gate, you'll receive a notification prompting you to approve/deny access.
-* **Pairing Process:** 
+* **Pairing Process:**
   1. Tap "Register New iButton" on the home screen
   2. Present the iButton to the reader when prompted
   3. Once detected, the app will confirm successful registration
-* **Deletion Process:** 
+* **Deletion Process:**
   1. Tap "Delete iButton" on the home screen
   2. Present the iButton to the reader when prompted
   3. Once detected, the app will confirm successful deletion
@@ -82,4 +82,4 @@ This mobile app is designed to work specifically with the [Smart Parking ESP32 s
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
