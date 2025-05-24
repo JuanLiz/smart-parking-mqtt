@@ -2,8 +2,6 @@
 
 A React Native - Expo mobile application that interfaces with the [Smart Parking ESP32 system](https://github.com/JuanLiz/smart-parking-esp32) via MQTT protocol. This app enables secure two-factor authentication, remote iButton management, and real-time parking status monitoring.
 
-![Authentication notification](img/ss-1.png) ![Authentication flow](img/ss-2.png)
-
 ## Features
 
 * **Two-Factor Authentication (2FA):** Approve or deny access requests when an iButton is scanned at the parking gate.
@@ -64,10 +62,10 @@ A React Native - Expo mobile application that interfaces with the [Smart Parking
 
 | Function | Screenshots |
 |----------|-------------|
-| Authentication Notifications | ![Notification](img/ss-1.png) ![Notification detail](img/ss-2.png) |
-| Authentication Flow | ![Entry approval](img/ss-4.png) |
-| iButton Pairing | ![Pairing process](img/ss-5.png) ![Pairing success](img/ss-6.png) |
-| iButton Deletion | ![Deletion mode](img/ss-7.png) ![Deletion success](img/ss-8.png) |
+| Authentication Notifications | <img src="img/ss-1.png" width="200" alt="Notification"/> <img src="img/ss-2.png" width="200" alt="Notification detail"/> |
+| Authentication Flow | <img src="img/ss-4.png" width="200" alt="Entry approval"/> |
+| iButton Pairing | <img src="img/ss-5.png" width="200" alt="Pairing process"/> <img src="img/ss-6.png" width="200" alt="Pairing success"/> |
+| iButton Deletion | <img src="img/ss-7.png" width="200" alt="Deletion mode"/> <img src="img/ss-8.png" width="200" alt="Deletion success"/> |
 
 ## Integration with ESP32 System
 
