@@ -1,50 +1,85 @@
-# Welcome to your Expo app 👋
+# Smart Parking MQTT Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native - Expo mobile application that interfaces with the [Smart Parking ESP32 system](https://github.com/JuanLiz/smart-parking-esp32) via MQTT protocol. This app enables secure two-factor authentication, remote iButton management, and real-time parking status monitoring.
 
-## Get started
+![Authentication notification](img/ss-1.png) ![Authentication flow](img/ss-2.png)
 
-1. Install dependencies
+## Features
+
+* **Two-Factor Authentication (2FA):** Approve or deny access requests when an iButton is scanned at the parking gate.
+* **Biometric Security:** Uses device biometric authentication (fingerprint/face recognition) to verify user identity before approving entry requests.
+* **Push Notifications:** Receive real-time notifications when an iButton is scanned, even when the app is in the background.
+* **Remote iButton Management:**
+  * Register new iButtons through a guided pairing process
+  * Delete registered iButtons remotely
+* **Real-time Parking Status:** Monitor current parking occupancy and system connection status.
+* **MQTT Communication:** Connects to the same MQTT broker as the ESP32 device for reliable, real-time messaging.
+
+## Setup & Installation
+
+1. **Clone the Repository:**
+
+   ```bash
+   git clone https://github.com/JuanLiz/smart-parking-mqtt.git
+   cd smart-parking-mqtt
+   ```
+
+2. **Install Dependencies:**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Configuration:**
+   * The app connects to the MQTT broker at `ws://broker.emqx.io:8083/mqtt` by default.
+   * To change the broker or topic prefix, modify the configuration in `services/MQTTService.ts`.
+
+4. **Run the App in Expo Go:**
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+   Or for a specific platform:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   npx expo run android
+   npx expo run ios
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Usage
 
-## Get a fresh project
+* **Home Screen:** Displays connection status and parking occupancy. Options to initiate iButton pairing or deletion.
+* **Authentication Flow:** When an iButton is scanned at the parking gate, you'll receive a notification prompting you to approve/deny access.
+* **Pairing Process:** 
+  1. Tap "Register New iButton" on the home screen
+  2. Present the iButton to the reader when prompted
+  3. Once detected, the app will confirm successful registration
+* **Deletion Process:** 
+  1. Tap "Delete iButton" on the home screen
+  2. Present the iButton to the reader when prompted
+  3. Once detected, the app will confirm successful deletion
 
-When you're ready, run:
+## App Screenshots
 
-```bash
-npm run reset-project
-```
+| Function | Screenshots |
+|----------|-------------|
+| Authentication Notifications | ![Notification](img/ss-1.png) ![Notification detail](img/ss-2.png) |
+| Authentication Flow | ![Entry approval](img/ss-4.png) |
+| iButton Pairing | ![Pairing process](img/ss-5.png) ![Pairing success](img/ss-6.png) |
+| iButton Deletion | ![Deletion mode](img/ss-7.png) ![Deletion success](img/ss-8.png) |
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Integration with ESP32 System
 
-## Learn more
+This mobile app is designed to work specifically with the [Smart Parking ESP32 system](https://github.com/JuanLiz/smart-parking-esp32). Both systems connect to the same MQTT broker and communicate through a defined topic structure:
 
-To learn more about developing your project with Expo, look at the following resources:
+* `[PREFIX]/auth/2fa_request`: ESP32 requests authentication when an iButton is scanned
+* `[PREFIX]/cmd/auth/2fa_response`: App responds with approval/denial
+* `[PREFIX]/cmd/initiate_pairing`: App initiates pairing mode
+* `[PREFIX]/pairing/success`: ESP32 confirms successful pairing
+* `[PREFIX]/cmd/ibutton/initiate_delete_mode`: App initiates delete mode
+* `[PREFIX]/status`: ESP32 publishes system status information
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## License
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+[MIT License](LICENSE)
